@@ -78,6 +78,93 @@ Compute 赤数え (cons 赤玉 (cons 赤玉 nil)).
 Compute 赤数え (cons 赤玉 (cons 白玉 (cons 赤玉 nil))).
   (* = 2 : nat *)
 
+Definition count_rouge_with_map s :=
+  sumn (map (fun m => if m is 赤玉 then 1 else 0) s).
+(*
+m is 赤玉　はProp型ではない点に注意
+m = 赤玉 ではない
+by 須原さん
+*)
+
+Compute count_rouge_with_map nil.
+  (* = 0 : nat *)
+Compute count_rouge_with_map (cons 赤玉 nil).
+  (* = 1 : nat *)
+Compute count_rouge_with_map (cons 白玉 nil).
+  (* = 0 : nat *)
+Compute count_rouge_with_map (cons 赤玉 (cons 赤玉 nil)).
+  (* = 2 : nat *)
+Compute count_rouge_with_map (cons 赤玉 (cons 白玉 (cons 赤玉 nil))).
+  (* = 2 : nat *)
+
+Definition count_rouge_with_filter s :=
+  size (filter (fun m => if m is 赤玉 then true else false) s).
+
+Compute count_rouge_with_filter nil.
+  (* = 0 : nat *)
+Compute count_rouge_with_filter (cons 赤玉 nil).
+  (* = 1 : nat *)
+Compute count_rouge_with_filter (cons 白玉 nil).
+  (* = 0 : nat *)
+Compute count_rouge_with_filter (cons 赤玉 (cons 赤玉 nil)).
+  (* = 2 : nat *)
+Compute count_rouge_with_filter (cons 赤玉 (cons 白玉 (cons 赤玉 nil))).
+  (* = 2 : nat *)
+
+Definition count_rouge_with_filter' s :=
+  size (filter (eq_ball 赤玉) s).
+
+Compute count_rouge_with_filter' nil.
+  (* = 0 : nat *)
+Compute count_rouge_with_filter' (cons 赤玉 nil).
+  (* = 1 : nat *)
+Compute count_rouge_with_filter' (cons 白玉 nil).
+  (* = 0 : nat *)
+Compute count_rouge_with_filter' (cons 赤玉 (cons 赤玉 nil)).
+  (* = 2 : nat *)
+Compute count_rouge_with_filter' (cons 赤玉 (cons 白玉 (cons 赤玉 nil))).
+  (* = 2 : nat *)
+
+Theorem thm1 :
+  forall s : 玉の列,
+    赤数え s = count_rouge_with_map s.
+Proof.
+  intro.
+  induction s.
+  - (* s = nil の場合 *)
+    reflexivity.
+  - (* s = nil でない場合 *)
+    case a.
+    + (* a = 赤玉の場合 *)
+      simpl.
+      rewrite IHs.
+      reflexivity.
+    + (* a = 白玉の場合 *)
+      simpl.
+      rewrite IHs.
+      reflexivity.
+Qed.
+
+Theorem thm2 :
+  forall s : 玉の列,
+    赤数え s = count_rouge_with_filter s.
+Proof.
+  intro.
+  induction s.
+  - (* s = nil の場合 *)
+    reflexivity.
+  - (* s = nil でない場合 *)
+    case a.
+    + (* a = 赤玉の場合 *)
+      simpl.
+      rewrite IHs.
+      reflexivity.
+    + (* a = 白玉の場合 *)
+      simpl.
+      rewrite IHs.
+      reflexivity.
+Qed.
+
   
 (** 問 3.5 追加の問題 *)
 (** 与えられた玉の列に対する赤玉の数を示す述語 num_of_red を Inductive により定義せよ。 *)
@@ -86,6 +173,7 @@ Compute 赤数え (cons 赤玉 (cons 白玉 (cons 赤玉 nil))).
 Inductive num_of_red : 玉の列 -> nat -> Prop :=
 | b_nil   : num_of_red nil 0
 | b_red   : forall s n, num_of_red s n -> num_of_red (赤玉 :: s) (1 + n)
+(* 1 + n は変数で置き換えて、前提条件にする方がいい by 須原さん *)
 | b_white : forall s n, num_of_red s n -> num_of_red (白玉 :: s) n
 .
 
