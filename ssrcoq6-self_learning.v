@@ -24,7 +24,10 @@ Check lt : nat -> nat -> Prop.
 Check lt_wf_ind :
         forall (n : nat) (P : nat -> Prop),
           (forall n0 : nat, (forall m : nat, (m < n0)%coq_nat -> P m) -> P n0) ->
-          P n.
+          P n. (* 不等号の定義がスタンダードCoqとMathCompで違うということを覚えておく *)
+
+Check leP. (* <= *)
+Check ltP. (* < congr (_ + _). *)
 
 Function gcd (m n : nat) {wf lt m} : nat :=
   if m is 0
@@ -166,6 +169,25 @@ Proof.
       by rewrite gcd_equation.
     + (* n * g = _.+1 *)
       by rewrite gcd_equation mod0n gcd_equation.
+  Restart.
+  (* ProofCafe 須原様が示された証明 *)
+  (* 古い MathComp では muln_modl に 0 < p の前提があるため、対応する。 *)
+  case H : (0 < g).
+  - functional induction (gcd k1 k2).
+    + by rewrite mul0n gcd_equation.
+    + rewrite -IHn (@muln_modl g n m) => //=.
+      rewrite gcd_equation.
+      case: (m * g); last done.
+      rewrite modn0.
+      case: (n * g) => [| n'].
+      * by rewrite gcd_equation.
+      * by rewrite gcd_equation mod0n gcd_equation.
+  (* g = 0 の場合。新しい MathComp では不要である。 *)
+  - move/negP/negP : H.
+    rewrite -eqn0Ngt.
+    move/eqP => ->.
+    rewrite 3!muln0.
+      by rewrite gcd_equation.
 Qed.
 
 Theorem gcd_max g m n :
@@ -191,10 +213,19 @@ Lemma odd_square n :
 Proof.
   rewrite oddM.
   by case (odd n).
+  Restart.
+  (* ProofCafe 須原様が示された別解 *)
+  rewrite odd_mul.
+  apply/idP/idP. (* = (boolの必要十分ｎ条件) を -> と <- に分ける定石 by 須原様 *)
+  - move=> H.
+    apply/andP.
+    by split.
+  - case => /andP.
+    by case.
 Qed.
 
 Lemma even_double_half n :
-  ~~odd n ->
+  ~~odd n -> 
   n./2.*2 = n.
 Proof.
   move=> Hnoddn.
@@ -202,11 +233,16 @@ Proof.
   rewrite -[LHS]add0n.
   apply/eqP.
   rewrite eqn_add2r.
-  apply/eqP.
   move: Hnoddn.
   rewrite -eqb0.
   move/eqP ->.
   by [].
+  Restart.
+  (* ProofCafe 須原様、盛田様の証明 *)
+  move=> H.
+  rewrite -[RHS]odd_double_half.
+  move/negbTE in H.
+  by rewrite H.
 Qed.
 
 (* 本定理*)
@@ -323,7 +359,10 @@ Proof.
   rewrite -Hnp => /negbT.
   by rewrite -odd_square => /even_double_half.
 Qed.
-
+(*
+pが2で割り切れるか割り切れないかの場合分けが必要なはず。
+どこで行っているか？
+*)
 Lemma main_thm'_lm2 (n p : nat) :
   n * n = (p * p).*2 ->
   p * p = (n./2 * n./2).*2.
@@ -364,10 +403,15 @@ Proof.
 
   (* (IH n./2) を apply して、ゴールを (n./2 < n)%coq_nat に書き換える。 *)
   apply/eqP/(IH n./2); last done.
+  apply/ltP.
+  (*
+    ( )%coq_natのスコープをなくしてMathCompに統一するために、
+    なるべく早くapply/ltPを実行するべき。 by 須原様
+  *)
 
   (* (@ltn_Pdiv n 2) を apply して、証明を完了する。 *)
   rewrite -divn2.
-  by apply/ltP/(@ltn_Pdiv n 2).
+  by apply(*/ltP*)/(@ltn_Pdiv n 2).
 Qed.
 
 (* 無理数*)
@@ -423,7 +467,17 @@ Proof.
   rewrite -(sqrt_def (INR 2)).
   - (* 本題の証明 *)
     rewrite Hrt.
-    field. (* ここで、ゴールが INR q <> 0%R に変わる模様。どうしてだろう？ *)
+    field.
+    (*
+      ここで、ゴールが INR q <> 0%R に変わるのは、分母が0でないことが新たなゴールとなるため。
+      「分母が0でないなら、体の要素として等しい」という形の補題を適用することになるため、
+      分母が0でないことが新たなゴールとなるとのこと。by 盛田様
+    *)
+    (*
+      環は、乗算について逆元の存在を要求していないので、除算ができない。
+      体は、0以外は乗算について逆元の存在を要求するので、除算ができる。
+      とのこと。
+    *)
     have : INR q <> 0%R.
       by auto with real.
     by apply.
