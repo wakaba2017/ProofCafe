@@ -710,12 +710,19 @@ Module Iterator.
     - move=> e c IHc stack.
       rewrite eval_code_cat /=; last done.
       rewrite eval_drop_cat /= compile_correct drop0.
-      have -> : eval_code^~ (compile_cmd c ++ [:: Cnext]) = eval_cmd^~ c.
-        move: (IHc stack).
-        admit.
-      by [].
+      case: (eval stack e); first done; last done.
+      move=> p.
+      apply: eq_iter.
+      apply: (@ftrans _ _ (eval_code^~ (compile_cmd c ++ [:: Cnext]))
+                          (eval_code^~ (compile_cmd c))
+                          (eval_cmd^~ c)); last done.
+      apply: (@ftrans _ _ (eval_code^~ (compile_cmd c ++ [:: Cnext]))
+                          (fun x : seq Z => (eval_code^~ [:: Cnext]) ((eval_code^~ (compile_cmd c)) x))
+                          (eval_code^~ (compile_cmd c))); last done.
+      rewrite /eqfun => x.
+      by apply: (@eval_code_cat x (compile_cmd c) [:: Cnext]) (compile_cmd_balanced c).
     (* 追加ここまで *)
-  Admitted.
+  Qed.
 
 (*
 eval_code
