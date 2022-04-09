@@ -543,8 +543,41 @@ Module Iterator.
   *)
   Proof.
     (* 追加ここから *)
+    (* ProofCafe須原様の解答を参考にさせていただいた。 *)
+    move=> Hbl1.
+    elim: Hbl1 stack l2.
+    (* 単にelimではなく、上記のようにすることで、Hbl1 : balanced l1に関する帰納法を実行しつつ、
+       帰納法の仮定のスタックstackや連結するコマンドリストl2を汎化することができる模様。
+       こうしないと、コンストラクタBcatの場合を証明できない。 *)
+    - (* Bneutralの場合 *)
+      move=> c.
+      case: c => //=.
+    - (* Bcatの場合 *)
+      move=> l0 l2 Hbl0 IHl0l3 Hbl2 IHl2l3 stack l3.
+      by rewrite -catA !IHl0l3 IHl2l3.
+    - (* Brepの場合 *)
+      move=> l Hbl IHll2 stack l2.
+      (* ここで、スタックstackについて場合分けするのがミソらしい。 *)
+      case: stack.
+      - (* stackが空リストの場合 *)
+        by rewrite -cat1s /= -catA cat1s !eval_drop_cat /=.
+      - (* stackが空リストでない場合 *)
+        move=> a l0.
+        case: a.
+        (* ここでスタックトップa : Zについて場合分けするのがミソらしい。 *)
+        + (* aが0の場合 *)
+          by rewrite /= !eval_drop_cat -catA cat1s eval_drop_cat /=.
+        + (* aが正数の場合 *)
+          move=> p.
+          rewrite /= -catA cat1s !eval_drop_cat /=.
+          apply/(@f_equal (seq Z) (seq Z) (eval_code^~ l2))/eq_iter.
+          rewrite /eqfun => x.
+          by rewrite !IHll2 /=.
+        + (* aが負数の場合 *)
+          move=> p.
+          by rewrite /= -catA cat1s !eval_drop_cat /=.
     (* 追加ここまで *)
-  Admitted.
+  Qed.
 
   Lemma compile_balanced n e : balanced (compile n e).
   Proof.
