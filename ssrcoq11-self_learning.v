@@ -579,6 +579,141 @@ Module Iterator.
     (* 追加ここまで *)
   Qed.
 
+  Check balanced_ind :
+    forall P : seq code -> Prop,
+      (forall c : code,
+         neutral c = true ->
+         P [:: c]) ->
+      (forall l1 l2 : seq code,
+         balanced l1 ->
+         P l1 ->
+         balanced l2 ->
+         P l2 ->
+         P (l1 ++ l2)) ->
+      (forall l : seq code,
+         balanced l ->
+         P l ->
+         P (Crep (length l) :: l ++ [:: Cnext])) ->
+      forall l : seq code,
+        balanced l ->
+        P l.
+
+  (*
+    自己確認用
+  *)
+  Lemma eval_code_cat' stack (l1 l2 : seq code) :
+    balanced l1 ->
+    eval_code stack (l1 ++ l2) =
+    eval_code (eval_code stack l1) l2.
+  Proof.
+
+    (*
+    単にelim.として前提balanced l1に関する帰納法で証明しようとするのは、
+    balanced_indをapplyする際に、戻り値がforallなしのProp型であるような関数を渡すことに相当する模様。
+    *)
+
+    Check (fun l => eval_code stack (l ++ l2) = eval_code (eval_code stack l) l2) :
+            seq code -> Prop. (* 関数本体に現れる stack, l2 が汎化されてない。 *)
+
+    move=> Hbl1.
+    apply: (@balanced_ind (fun l => eval_code stack (l ++ l2) = eval_code (eval_code stack l) l2)); last done.
+
+    (*
+    3 goals
+    stack : seq Z
+    l1, l2 : seq code
+    Hbl1 : balanced l1
+    ______________________________________(1/3)
+    forall c : code,
+    neutral c = true -> eval_code stack ([:: c] ++ l2) = eval_code (eval_code stack [:: c]) l2
+    ______________________________________(2/3)
+    forall l0 l3 : seq code,
+    balanced l0 ->
+    eval_code stack (l0 ++ l2) = eval_code (eval_code stack l0) l2 ->
+    balanced l3 ->
+    eval_code stack (l3 ++ l2) = eval_code (eval_code stack l3) l2 ->
+    eval_code stack ((l0 ++ l3) ++ l2) = eval_code (eval_code stack (l0 ++ l3)) l2
+    ______________________________________(3/3)
+    forall l : seq code,
+    balanced l ->
+    eval_code stack (l ++ l2) = eval_code (eval_code stack l) l2 ->
+    eval_code stack ((Crep (length l) :: l ++ [:: Cnext]) ++ l2) =
+    eval_code (eval_code stack (Crep (length l) :: l ++ [:: Cnext])) l2
+    *)
+
+    Restart.
+
+    (*
+    move=> Hbl1としてから、
+    elim: Hbl1 stack l2として前提balanced l1に関する帰納法で証明しようとするのは、
+    balanced_indをapplyする際に、戻り値がforall付きのProp型であるような関数を渡すことに相当する模様。
+    *)
+
+    Check (fun l => forall stack l2, eval_code stack (l ++ l2) = eval_code (eval_code stack l) l2) :
+            seq code -> Prop. (* 関数本体に現れる stack, l2 が汎化されている。 *)
+
+    move=> Hbl1.
+    apply: (@balanced_ind (fun l => forall stack l2, eval_code stack (l ++ l2) = eval_code (eval_code stack l) l2)) ;last done.
+
+    (*
+    3 goals
+    stack : seq Z
+    l1, l2 : seq code
+    Hbl1 : balanced l1
+    ______________________________________(1/3)
+    forall c : code,
+    neutral c = true ->
+    forall (stack0 : seq Z) (l0 : seq code),
+    eval_code stack0 ([:: c] ++ l0) = eval_code (eval_code stack0 [:: c]) l0
+    ______________________________________(2/3)
+    forall l0 l3 : seq code,
+    balanced l0 ->
+    (forall (stack0 : seq Z) (l4 : seq code),
+     eval_code stack0 (l0 ++ l4) = eval_code (eval_code stack0 l0) l4) ->
+    balanced l3 ->
+    (forall (stack0 : seq Z) (l4 : seq code),
+     eval_code stack0 (l3 ++ l4) = eval_code (eval_code stack0 l3) l4) ->
+    forall (stack0 : seq Z) (l4 : seq code),
+    eval_code stack0 ((l0 ++ l3) ++ l4) = eval_code (eval_code stack0 (l0 ++ l3)) l4
+    ______________________________________(3/3)
+    forall l : seq code,
+    balanced l ->
+    (forall (stack0 : seq Z) (l3 : seq code), eval_code stack0 (l ++ l3) = eval_code (eval_code stack0 l) l3) ->
+    forall (stack0 : seq Z) (l0 : seq code),
+    eval_code stack0 ((Crep (length l) :: l ++ [:: Cnext]) ++ l0) =
+    eval_code (eval_code stack0 (Crep (length l) :: l ++ [:: Cnext])) l0
+    *)
+
+    (* 以下、move=> Hbl1. elim: Hbl1 stack l2.とした場合と同じ手順で証明できた。 *)
+    - (* Bneutralの場合 *)
+      move=> c.
+      case: c => //=.
+    - (* Bcatの場合 *)
+      move=> l0 l3 Hbl0 IHl0l3 Hbl3 IHl3l4 stack' l4.
+      by rewrite -catA !IHl0l3 IHl3l4.
+    - (* Brepの場合 *)
+      move=> l Hbl IHll3 stack0 l0.
+      (* ここで、スタックstack0について場合分けするのがミソらしい。 *)
+      case: stack0.
+      - (* stackが空リストの場合 *)
+        by rewrite -cat1s /= -catA cat1s !eval_drop_cat /=.
+      - (* stackが空リストでない場合 *)
+        move=> a l3.
+        case: a.
+        (* ここでスタックトップa : Zについて場合分けするのがミソらしい。 *)
+        + (* aが0の場合 *)
+          by rewrite /= !eval_drop_cat -catA cat1s eval_drop_cat /=.
+        + (* aが正数の場合 *)
+          move=> p.
+          rewrite /= -catA cat1s !eval_drop_cat /=.
+          apply/(@f_equal (seq Z) (seq Z) (eval_code^~ l0))/eq_iter.
+          rewrite /eqfun => x.
+          by rewrite !IHll3 /=.
+        + (* aが負数の場合 *)
+          move=> p.
+          by rewrite /= -catA cat1s !eval_drop_cat /=.
+  Qed.
+
   Lemma compile_balanced n e : balanced (compile n e).
   Proof.
     by elim: e n => /=; auto.
